@@ -3,7 +3,6 @@ name: Daily Resume Upload to Naukri
 on:
   schedule:
     # Runs daily at 11:55 PM IST (18:25 UTC)
-    # Adjust this time as needed for your timezone
     - cron: '25 18 * * *'
   workflow_dispatch:  # Allows manual trigger for testing
 
@@ -25,17 +24,31 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y wget gnupg unzip
         
-    - name: Install Google Chrome
+    - name: Install Google Chrome and ChromeDriver
       run: |
+        # Install Chrome
         wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
         echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
         sudo apt-get update
         sudo apt-get install -y google-chrome-stable
         
-    - name: Verify Chrome installation
+        # Get Chrome version
+        CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f3 | cut -d '.' -f1-3)
+        echo "Chrome version: $CHROME_VERSION"
+        
+        # Download and install matching ChromeDriver
+        CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+        echo "ChromeDriver version: $CHROMEDRIVER_VERSION"
+        
+        wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+        sudo unzip /tmp/chromedriver.zip -d /usr/bin/
+        sudo chmod +x /usr/bin/chromedriver
+        
+    - name: Verify installations
       run: |
         google-chrome --version
-        which google-chrome
+        chromedriver --version
+        which chromedriver
         
     - name: Install Python dependencies
       run: |
@@ -69,12 +82,3 @@ jobs:
           *.log
           *.png
         retention-days: 5
-        
-    - name: Upload logs on success (optional)
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: success-logs-${{ github.run_number }}
-        path: |
-          *.log
-        retention-days: 2
