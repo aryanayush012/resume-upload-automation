@@ -1,6 +1,5 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -8,59 +7,118 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 import time
 import os
+import logging
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # --- USER CONFIG ---
-EMAIL = "aryanayush012@gmail.com"
-PASSWORD = "Admin@1234"
-RESUME_PATH = "C:\\Users\\ayush.aryan\\Downloads\\Ayush Aryan.pdf"
+# Use environment variables for cloud, fallback to your values for local testing
+EMAIL = os.environ.get('NAUKRI_EMAIL', 'aryanayush012@gmail.com')
+PASSWORD = os.environ.get('NAUKRI_PASSWORD', 'Admin@1234')
+
+# Detect environment and set appropriate paths
+if os.environ.get('GITHUB_ACTIONS'):
+    # Cloud environment - file should be in repository root
+    RESUME_PATH = "Ayush Aryan.pdf"
+    logger.info("🤖 Running in GitHub Actions (cloud environment)")
+else:
+    # Local environment - use your local path
+    RESUME_PATH = "C:\\Users\\ayush.aryan\\Downloads\\Ayush Aryan.pdf"
+    logger.info("🖥️ Running in local environment")
 
 # Verify resume file exists
 if not os.path.exists(RESUME_PATH):
-    print(f"❌ Resume file not found at: {RESUME_PATH}")
+    logger.error(f"❌ Resume file not found at: {RESUME_PATH}")
+    logger.info("📁 Current directory contents:")
+    for item in os.listdir('.'):
+        logger.info(f"  - {item}")
     exit(1)
+
+logger.info(f"✅ Resume file found at: {RESUME_PATH}")
+
+def human_like_delay(min_seconds=1, max_seconds=3):
+    """Add random delays to mimic human behavior"""
+    import random
+    delay = random.uniform(min_seconds, max_seconds)
+    time.sleep(delay)
 
 # --- SETUP DRIVER ---
 options = webdriver.ChromeOptions()
-# Remove headless mode to see what's happening
-# options.add_argument("--headless")  
+
+# Enable headless mode only in cloud environment
+if os.environ.get('GITHUB_ACTIONS'):
+    options.add_argument("--headless")
+    logger.info("🤖 Running in headless mode")
+else:
+    logger.info("🖥️ Running with GUI")
+
+# Anti-detection options
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--disable-blink-features=AutomationControlled")
-options.add_experimental_option("excludeSwitches", ["enable-automation"])
+options.add_argument("--disable-web-security")
+options.add_argument("--allow-running-insecure-content")
+options.add_argument("--disable-extensions")
+options.add_argument("--disable-plugins")
+options.add_argument("--disable-default-apps")
+
+# Set realistic user agent
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+options.add_argument(f"--user-agent={user_agent}")
+options.add_argument("--window-size=1366,768")
+
+# Experimental options
+options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
 options.add_experimental_option('useAutomationExtension', False)
 
-# Add user agent to look more natural
-options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+# Use appropriate driver setup based on environment
+if os.environ.get('GITHUB_ACTIONS'):
+    # Cloud environment - use system chromedriver
+    driver = webdriver.Chrome(options=options)
+    logger.info("🔧 Using system chromedriver")
+else:
+    # Local environment - use webdriver-manager
+    from webdriver_manager.chrome import ChromeDriverManager
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
+    logger.info("🔧 Using webdriver-manager")
 
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+# Execute anti-detection scripts
 driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
-wait = WebDriverWait(driver, 15)
+wait = WebDriverWait(driver, 20)
 
 try:
-    print("🚀 Opening Naukri login page...")
+    logger.info("🚀 Opening Naukri login page...")
     driver.get("https://www.naukri.com/nlogin/login")
     
-    # Wait for page to load completely
-    time.sleep(5)
+    # Wait for page to load
+    human_like_delay(3, 5)
     
-    print("📄 Page title:", driver.title)
-    print("🔗 Current URL:", driver.current_url)
+    logger.info(f"📄 Page title: {driver.title}")
+    logger.info(f"🔗 Current URL: {driver.current_url}")
     
     # Check if we got blocked
-    if "access denied" in driver.title.lower() or "blocked" in driver.page_source.lower():
-        print("❌ Seems like we're blocked. Let's try a different approach...")
-        driver.get("https://www.naukri.com")
-        time.sleep(3)
+    if "Access Denied" in driver.title or "access denied" in driver.page_source.lower():
+        logger.warning("⚠️ Access denied detected. Trying alternative approach...")
         
-        # Try to find login link
+        # Try main page first
+        driver.get("https://www.naukri.com")
+        human_like_delay(2, 4)
+        
+        # Find and click login link
         try:
             login_link = wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "Login")))
             login_link.click()
-            time.sleep(3)
+            human_like_delay(2, 3)
         except:
             driver.get("https://www.naukri.com/nlogin/login")
-            time.sleep(3)
+            human_like_delay(2, 3)
     
     # Try different possible selectors for email field
     email_selectors = [
@@ -78,24 +136,23 @@ try:
                 email_element = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
             else:
                 email_element = wait.until(EC.element_to_be_clickable((By.ID, selector)))
-            print(f"✅ Found email field with selector: {selector}")
+            logger.info(f"✅ Found email field with selector: {selector}")
             break
         except Exception as e:
-            print(f"❌ Failed to find email with selector {selector}: {str(e)}")
+            logger.debug(f"❌ Failed to find email with selector {selector}: {str(e)}")
             continue
     
     if not email_element:
-        print("❌ Could not find email input field")
-        print("Current page title:", driver.title)
-        print("Current URL:", driver.current_url)
+        logger.error("❌ Could not find email input field")
+        logger.info(f"Current page title: {driver.title}")
+        logger.info(f"Current URL: {driver.current_url}")
         
-        # Save page source for debugging
+        # Save debug info
+        driver.save_screenshot("login_page_debug.png")
         with open("page_source.html", "w", encoding="utf-8") as f:
             f.write(driver.page_source)
-        print("📄 Page source saved to page_source.html")
+        logger.info("📸 Debug files saved")
         
-        driver.save_screenshot("login_page.png")
-        print("📸 Screenshot saved as login_page.png")
         driver.quit()
         exit(1)
     
@@ -115,59 +172,57 @@ try:
                 password_element = driver.find_element(By.CSS_SELECTOR, selector)
             else:
                 password_element = driver.find_element(By.ID, selector)
-            print(f"✅ Found password field with selector: {selector}")
+            logger.info(f"✅ Found password field with selector: {selector}")
             break
         except Exception as e:
-            print(f"❌ Failed to find password with selector {selector}: {str(e)}")
+            logger.debug(f"❌ Failed to find password with selector {selector}: {str(e)}")
             continue
     
     if not password_element:
-        print("❌ Could not find password input field")
+        logger.error("❌ Could not find password input field")
         driver.quit()
         exit(1)
     
-    # Clear fields and enter credentials slowly
-    print("📝 Clearing and entering email...")
+    # Fill in credentials with human-like behavior
+    logger.info("📝 Entering email...")
     email_element.click()
     email_element.clear()
-    time.sleep(1)
+    human_like_delay(0.5, 1)
     
-    # Type email character by character to avoid detection
+    # Type email slowly
     for char in EMAIL:
         email_element.send_keys(char)
         time.sleep(0.1)
     
-    time.sleep(1)
+    human_like_delay(1, 2)
     
-    print("📝 Clearing and entering password...")
+    logger.info("📝 Entering password...")
     password_element.click()
     password_element.clear()
-    time.sleep(1)
+    human_like_delay(0.5, 1)
     
-    # Type password character by character
+    # Type password slowly
     for char in PASSWORD:
         password_element.send_keys(char)
         time.sleep(0.1)
     
-    time.sleep(2)
+    human_like_delay(1, 2)
     
-    # Check for CAPTCHA or other challenges
-    page_source = driver.page_source.lower()
-    if "captcha" in page_source or "verify" in page_source:
-        print("⚠️ CAPTCHA or verification challenge detected!")
-        print("📸 Taking screenshot for manual review...")
-        driver.save_screenshot("captcha_challenge.png")
-        input("🖱️ Please solve the CAPTCHA/verification manually and press Enter to continue...")
+    # Check for CAPTCHA
+    if "captcha" in driver.page_source.lower() or "verify" in driver.page_source.lower():
+        logger.warning("⚠️ CAPTCHA detected!")
+        driver.save_screenshot("captcha_detected.png")
+        if not os.environ.get('GITHUB_ACTIONS'):
+            input("🖱️ Please solve CAPTCHA manually and press Enter...")
     
     # Try different selectors for login button
     login_selectors = [
         "button[type='submit']",
         "//button[contains(text(),'Login')]",
-        "//input[@type='submit']", 
+        "//input[@type='submit']",
         "//button[@type='submit']",
         "#loginButton",
-        ".loginButton",
-        "input[value*='Login']"
+        ".loginButton"
     ]
     
     login_element = None
@@ -181,101 +236,64 @@ try:
                 login_element = driver.find_element(By.CLASS_NAME, selector[1:])
             else:
                 login_element = driver.find_element(By.CSS_SELECTOR, selector)
-            print(f"✅ Found login button with selector: {selector}")
+            logger.info(f"✅ Found login button with selector: {selector}")
             break
         except Exception as e:
-            print(f"❌ Failed to find login button with selector {selector}: {str(e)}")
+            logger.debug(f"❌ Failed to find login button with selector {selector}: {str(e)}")
             continue
     
     if not login_element:
-        print("❌ Could not find login button, trying Enter key...")
+        logger.warning("❌ Could not find login button, trying Enter key...")
         password_element.send_keys(Keys.RETURN)
     else:
-        # Move to button and click
-        print("🔐 Moving to login button and clicking...")
+        # Click login with human-like behavior
+        logger.info("🔐 Clicking login button...")
         ActionChains(driver).move_to_element(login_element).pause(1).click().perform()
     
-    # Wait for login to complete and check for errors
-    print("⏳ Waiting for login to complete...")
-    time.sleep(3)
+    # Wait for login to complete
+    logger.info("⏳ Waiting for login to complete...")
+    human_like_delay(8, 12)
     
-    # Check for error messages
-    error_selectors = [
-        ".err-wrap",
-        ".error-message", 
-        "[class*='error']",
-        ".alert-danger",
-        "#error_Email",
-        "#error_Password"
-    ]
-    
-    for selector in error_selectors:
-        try:
-            error_element = driver.find_element(By.CSS_SELECTOR, selector)
-            if error_element.is_displayed():
-                error_text = error_element.text
-                print(f"❌ Login error detected: {error_text}")
-                driver.save_screenshot("login_error.png")
-                print("📸 Error screenshot saved as login_error.png")
-        except:
-            continue
-    
-    # Wait a bit more
-    time.sleep(5)
-    
-    # Check current URL and page changes
+    # Check current state
     current_url = driver.current_url
     page_title = driver.title
     
-    print(f"🔗 Current URL after login attempt: {current_url}")
-    print(f"📄 Page title after login attempt: {page_title}")
+    logger.info(f"🔗 Current URL after login: {current_url}")
+    logger.info(f"📄 Page title after login: {page_title}")
     
-    # More comprehensive check for successful login
+    # Check for login success
     success_indicators = [
         "mnjuser" in current_url,
         "profile" in current_url,
         "dashboard" in current_url,
-        "nlogin" not in current_url,
-        "mynaukri" in page_title.lower(),
-        "profile" in page_title.lower()
+        "nlogin" not in current_url
     ]
     
     if any(success_indicators):
-        print("✅ Login appears successful!")
+        logger.info("✅ Login successful!")
     elif "nlogin" in current_url:
-        print("❌ Still on login page - login failed")
-        print("🔍 Let's check what happened...")
+        logger.error("❌ Login failed - still on login page")
         
-        # Save current state for debugging
-        driver.save_screenshot("login_failed_debug.png")
-        print("📸 Debug screenshot saved")
+        # Check for specific errors
+        page_source = driver.page_source.lower()
+        if "invalid" in page_source:
+            logger.error("⚠️ Invalid credentials")
+        if "blocked" in page_source:
+            logger.error("⚠️ Account may be blocked")
+        if "captcha" in page_source:
+            logger.error("⚠️ CAPTCHA required")
         
-        with open("login_failed_source.html", "w", encoding="utf-8") as f:
-            f.write(driver.page_source)
-        print("📄 Page source saved for debugging")
-        
-        # Check if there are any specific error messages
-        if "invalid" in driver.page_source.lower():
-            print("⚠️ Possible invalid credentials")
-        if "blocked" in driver.page_source.lower():
-            print("⚠️ Account might be temporarily blocked")
-        if "captcha" in driver.page_source.lower():
-            print("⚠️ CAPTCHA verification required")
-        
-        print("🛑 Exiting due to login failure")
+        driver.save_screenshot("login_failed.png")
+        logger.info("📸 Login failure screenshot saved")
         driver.quit()
         exit(1)
-    else:
-        print("🤔 Unclear login status, proceeding...")
     
-    print("🏠 Navigating to profile page...")
-    
-    # Navigate to profile page
+    logger.info("🏠 Navigating to profile page...")
     driver.get("https://www.naukri.com/mnjuser/profile")
-    time.sleep(8)
+    human_like_delay(5, 8)
     
-    print(f"📄 Profile page title: {driver.title}")
-    print(f"🔗 Profile page URL: {driver.current_url}")
+    logger.info(f"📄 Profile page title: {driver.title}")
+    logger.info(f"🔗 Profile page URL: {driver.current_url}")
     
     # Try to find resume upload button
     upload_selectors = [
@@ -283,8 +301,7 @@ try:
         "attachCV",
         "input[type='file']",
         "input[accept*='pdf']",
-        "//input[@id='attachCV']",
-        "[name*='attach']"
+        "//input[@id='attachCV']"
     ]
     
     upload_element = None
@@ -296,54 +313,53 @@ try:
                 upload_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
             else:
                 upload_element = wait.until(EC.presence_of_element_located((By.ID, selector)))
-            print(f"✅ Found upload button with selector: {selector}")
+            logger.info(f"✅ Found upload button with selector: {selector}")
             break
         except Exception as e:
-            print(f"❌ Failed to find upload with selector {selector}: {str(e)}")
+            logger.debug(f"❌ Failed to find upload with selector {selector}: {str(e)}")
             continue
     
     if not upload_element:
-        print("❌ Could not find resume upload button")
-        print("Current page title:", driver.title)
-        print("Current URL:", driver.current_url)
-        driver.save_screenshot("profile_page_debug.png")
-        print("📸 Profile page screenshot saved")
+        logger.error("❌ Could not find resume upload button")
+        logger.info(f"Current page title: {driver.title}")
+        logger.info(f"Current URL: {driver.current_url}")
         
-        with open("profile_page_source.html", "w", encoding="utf-8") as f:
+        driver.save_screenshot("profile_page_debug.png")
+        with open("profile_source.html", "w", encoding="utf-8") as f:
             f.write(driver.page_source)
-        print("📄 Profile page source saved")
+        logger.info("📸 Profile debug files saved")
         
         driver.quit()
         exit(1)
     
     # Upload resume
-    print("📄 Uploading resume...")
-    upload_element.send_keys(RESUME_PATH)
+    logger.info("📄 Uploading resume...")
+    upload_element.send_keys(os.path.abspath(RESUME_PATH))
     
-    time.sleep(5)
-    print("✅ Resume uploaded successfully!")
+    human_like_delay(3, 5)
+    logger.info("✅ Resume uploaded successfully!")
     
-    # Take a final screenshot to confirm
-    driver.save_screenshot("success_screenshot.png")
-    print("📸 Success screenshot saved")
+    # Take success screenshot
+    driver.save_screenshot("upload_success.png")
+    logger.info("📸 Success screenshot saved")
 
 except Exception as e:
-    print("❌ Error:", str(e))
-    print("Current page title:", driver.title if driver else "Driver not initialized")
-    print("Current URL:", driver.current_url if driver else "Driver not initialized")
+    logger.error(f"❌ Error: {str(e)}")
+    logger.info(f"Current page title: {driver.title if driver else 'Driver not initialized'}")
+    logger.info(f"Current URL: {driver.current_url if driver else 'Driver not initialized'}")
     
     # Take screenshot for debugging
     try:
         driver.save_screenshot("error_screenshot.png")
-        print("📸 Screenshot saved as error_screenshot.png")
+        logger.info("📸 Error screenshot saved")
     except:
         pass
 
 finally:
-    # Keep browser open for manual inspection if needed
-    print("🔍 Keeping browser open for 10 seconds for manual inspection...")
-    time.sleep(10)
-    
     if 'driver' in locals():
+        if not os.environ.get('GITHUB_ACTIONS'):
+            # Keep browser open locally for inspection
+            logger.info("🔍 Keeping browser open for 5 seconds...")
+            time.sleep(5)
         driver.quit()
-    print("🏁 Script execution finished.")
+    logger.info("🏁 Script execution finished.")
