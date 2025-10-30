@@ -45,6 +45,7 @@ if os.environ.get('GITHUB_ACTIONS'):
     options.add_argument("--disable-images")
     options.add_argument("--disable-web-security")
     options.add_argument("--allow-running-insecure-content")
+    options.add_argument("--remote-debugging-port=9222")
     logger.info("🤖 Running in headless mode (cloud)")
 else:
     logger.info("🖥️ Running with GUI (local)")
@@ -56,16 +57,16 @@ options.add_experimental_option('useAutomationExtension', False)
 
 # Use system chromedriver in GitHub Actions, webdriver-manager locally
 if os.environ.get('GITHUB_ACTIONS'):
-    # In GitHub Actions, use the system-installed chromedriver
-    service = Service('/usr/bin/chromedriver')
-    logger.info("🔧 Using system chromedriver")
+    # In GitHub Actions, chromedriver is available in PATH
+    driver = webdriver.Chrome(options=options)
+    logger.info("🔧 Using system chromedriver from PATH")
 else:
     # Local development - use webdriver-manager
     from webdriver_manager.chrome import ChromeDriverManager
     service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
     logger.info("🔧 Using webdriver-manager")
 
-driver = webdriver.Chrome(service=service, options=options)
 driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
 wait = WebDriverWait(driver, 15)
