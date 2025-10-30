@@ -44,6 +44,11 @@ jobs:
         fi
         echo "✅ Resume file found: $(ls -lh 'Ayush Aryan.pdf')"
         
+    - name: Check IP and location (for debugging)
+      run: |
+        echo "🌍 Current IP and location:"
+        curl -s https://ipinfo.io/json || echo "Could not get IP info"
+        
     - name: Run resume upload script
       env:
         NAUKRI_EMAIL: ${{ secrets.NAUKRI_EMAIL }}
@@ -53,12 +58,22 @@ jobs:
         echo "🚀 Starting resume upload automation..."
         python resume_upload.py
         
-    - name: Upload logs and screenshots on failure
+    - name: Upload debug files on failure
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: failure-logs-${{ github.run_number }}
+        name: debug-files-${{ github.run_number }}
         path: |
           *.log
           *.png
+          *.html
         retention-days: 5
+        
+    - name: Upload success logs
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: success-logs-${{ github.run_number }}
+        path: |
+          *.log
+        retention-days: 2
