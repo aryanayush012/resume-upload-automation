@@ -1,0 +1,68 @@
+name: Daily Resume Upload to Naukri
+
+on:
+  schedule:
+    # Runs daily at 11:55 PM UTC (adjust for your timezone)
+    # For IST (UTC+5:30), use 18:25 UTC to get 11:55 PM IST
+    - cron: '25 18 * * *'
+  workflow_dispatch:  # Allows manual trigger for testing
+
+jobs:
+  upload-resume:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget gnupg unzip
+        
+    - name: Install Google Chrome
+      run: |
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
+    - name: Verify Chrome installation
+      run: |
+        google-chrome --version
+        which google-chrome
+        
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Verify resume file exists
+      run: |
+        ls -la
+        if [ ! -f "Ayush Aryan.pdf" ]; then
+          echo "❌ Resume file not found!"
+          exit 1
+        fi
+        echo "✅ Resume file found"
+        
+    - name: Run resume upload script
+      env:
+        NAUKRI_EMAIL: ${{ secrets.NAUKRI_EMAIL }}
+        NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
+      run: |
+        python resume_upload.py
+        
+    - name: Upload logs if failure
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: failure-logs
+        path: |
+          *.log
+          *.png
