@@ -8,7 +8,7 @@ import time
 import os
 import logging
 
-# Setup logging
+# Setup logging for cloud environment
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -16,40 +16,51 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # --- USER CONFIG ---
+# Use environment variables for cloud, fallback to your values for local testing
 EMAIL = os.environ.get('NAUKRI_EMAIL', 'aryanayush012@gmail.com')
 PASSWORD = os.environ.get('NAUKRI_PASSWORD', 'Admin@1234')
-RESUME_PATH = "Ayush Aryan.pdf"  # Resume file in repository root
+
+# For cloud: resume file should be in repository root
+# For local: use your local path
+if os.environ.get('GITHUB_ACTIONS'):
+    RESUME_PATH = "Ayush Aryan.pdf"  # Cloud path
+else:
+    RESUME_PATH = "C:\\Users\\ayush.aryan\\Downloads\\Ayush Aryan.pdf"  # Local path
 
 # Verify resume file exists
 if not os.path.exists(RESUME_PATH):
     logger.error(f"❌ Resume file not found at: {RESUME_PATH}")
     exit(1)
 
-# --- SETUP DRIVER FOR CLOUD ---
+# --- SETUP DRIVER ---
 options = webdriver.ChromeOptions()
-options.add_argument("--headless")  # Must be headless in cloud
+
+# Enable headless mode only in cloud environment
+if os.environ.get('GITHUB_ACTIONS'):
+    options.add_argument("--headless")  # Headless for cloud
+    logger.info("🤖 Running in headless mode (cloud)")
+else:
+    logger.info("🖥️ Running with GUI (local)")
+
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--disable-gpu")
 options.add_argument("--window-size=1920,1080")
-options.add_argument("--disable-extensions")
-options.add_argument("--disable-plugins")
-options.add_argument("--disable-images")
 options.add_experimental_option("excludeSwitches", ["enable-automation"])
 options.add_experimental_option('useAutomationExtension', False)
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
-wait = WebDriverWait(driver, 20)
+wait = WebDriverWait(driver, 15)
 
 try:
     logger.info("🚀 Opening Naukri login page...")
     driver.get("https://www.naukri.com/nlogin/login")
     
     # Wait for page to load completely
-    time.sleep(5)
+    time.sleep(3)
     
     # Try different possible selectors for email field
     email_selectors = [
@@ -74,8 +85,8 @@ try:
     
     if not email_element:
         logger.error("❌ Could not find email input field")
-        logger.info("Current page title: %s", driver.title)
-        logger.info("Current URL: %s", driver.current_url)
+        logger.info(f"Current page title: {driver.title}")
+        logger.info(f"Current URL: {driver.current_url}")
         driver.quit()
         exit(1)
     
@@ -146,12 +157,12 @@ try:
     login_element.click()
     
     # Wait for login to complete
-    time.sleep(10)
+    time.sleep(8)
     
     # Check if login was successful
     if "nlogin" in driver.current_url:
         logger.error("❌ Login failed - still on login page")
-        logger.info("Current URL: %s", driver.current_url)
+        logger.info(f"Current URL: {driver.current_url}")
         driver.quit()
         exit(1)
     
@@ -160,7 +171,7 @@ try:
     
     # Navigate to profile page
     driver.get("https://www.naukri.com/mnjuser/profile")
-    time.sleep(8)
+    time.sleep(5)
     
     # Try to find resume upload button
     upload_selectors = [
@@ -186,8 +197,8 @@ try:
     
     if not upload_element:
         logger.error("❌ Could not find resume upload button")
-        logger.info("Current page title: %s", driver.title)
-        logger.info("Current URL: %s", driver.current_url)
+        logger.info(f"Current page title: {driver.title}")
+        logger.info(f"Current URL: {driver.current_url}")
         driver.quit()
         exit(1)
     
@@ -195,13 +206,20 @@ try:
     logger.info("📄 Uploading resume...")
     upload_element.send_keys(os.path.abspath(RESUME_PATH))
     
-    time.sleep(5)
+    time.sleep(3)
     logger.info("✅ Resume uploaded successfully!")
 
 except Exception as e:
-    logger.error("❌ Error: %s", str(e))
-    logger.info("Current page title: %s", driver.title if driver else "Driver not initialized")
-    logger.info("Current URL: %s", driver.current_url if driver else "Driver not initialized")
+    logger.error(f"❌ Error: {str(e)}")
+    logger.info(f"Current page title: {driver.title if driver else 'Driver not initialized'}")
+    logger.info(f"Current URL: {driver.current_url if driver else 'Driver not initialized'}")
+    
+    # Take screenshot for debugging
+    try:
+        driver.save_screenshot("error_screenshot.png")
+        logger.info("📸 Screenshot saved as error_screenshot.png")
+    except:
+        pass
 
 finally:
     if 'driver' in locals():
