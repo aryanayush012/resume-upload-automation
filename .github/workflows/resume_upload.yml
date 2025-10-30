@@ -2,8 +2,8 @@ name: Daily Resume Upload to Naukri
 
 on:
   schedule:
-    # Runs daily at 11:55 PM UTC (adjust for your timezone)
-    # For IST (UTC+5:30), use 18:25 UTC to get 11:55 PM IST
+    # Runs daily at 11:55 PM IST (18:25 UTC)
+    # Adjust this time as needed for your timezone
     - cron: '25 18 * * *'
   workflow_dispatch:  # Allows manual trigger for testing
 
@@ -16,7 +16,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
@@ -49,20 +49,32 @@ jobs:
           echo "❌ Resume file not found!"
           exit 1
         fi
-        echo "✅ Resume file found"
+        echo "✅ Resume file found: $(ls -lh 'Ayush Aryan.pdf')"
         
     - name: Run resume upload script
       env:
         NAUKRI_EMAIL: ${{ secrets.NAUKRI_EMAIL }}
         NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
+        GITHUB_ACTIONS: true
       run: |
+        echo "🚀 Starting resume upload automation..."
         python resume_upload.py
         
-    - name: Upload logs if failure
+    - name: Upload logs and screenshots on failure
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: failure-logs
+        name: failure-logs-${{ github.run_number }}
         path: |
           *.log
           *.png
+        retention-days: 5
+        
+    - name: Upload logs on success (optional)
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: success-logs-${{ github.run_number }}
+        path: |
+          *.log
+        retention-days: 2
