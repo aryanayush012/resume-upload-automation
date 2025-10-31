@@ -3,16 +3,15 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 import time
 import os
 import random
 import logging
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# --- USER CONFIG ---
 EMAIL = os.environ.get('NAUKRI_EMAIL', 'aryanayush012@gmail.com')
 PASSWORD = os.environ.get('NAUKRI_PASSWORD', 'Admin@1234')
 
@@ -27,67 +26,58 @@ if not os.path.exists(RESUME_PATH):
     logger.error(f"❌ Resume file not found at: {RESUME_PATH}")
     exit(1)
 
-logger.info(f"✅ Resume file found at: {RESUME_PATH}")
-
-def random_delay(min_sec=1, max_sec=3):
+def random_delay(min_sec=2, max_sec=5):
     time.sleep(random.uniform(min_sec, max_sec))
 
-# --- ENHANCED SETUP FOR BYPASS ---
+def human_typing(element, text):
+    element.clear()
+    for char in text:
+        element.send_keys(char)
+        time.sleep(random.uniform(0.15, 0.35))
+
+# --- ADVANCED FINGERPRINT SPOOFING ---
 options = webdriver.ChromeOptions()
 
 if os.environ.get('GITHUB_ACTIONS'):
     options.add_argument("--headless")
-    logger.info("🤖 Running in headless mode")
 
-# Enhanced stealth options
-stealth_options = [
+# Mimic your local environment exactly
+residential_options = [
     "--no-sandbox",
-    "--disable-dev-shm-usage",
+    "--disable-dev-shm-usage", 
     "--disable-blink-features=AutomationControlled",
     "--disable-web-security",
-    "--allow-running-insecure-content",
     "--disable-features=VizDisplayCompositor",
     "--disable-extensions",
     "--disable-plugins",
     "--disable-default-apps",
     "--disable-sync",
     "--no-first-run",
-    "--no-default-browser-check",
     "--disable-background-timer-throttling",
     "--disable-renderer-backgrounding",
     "--disable-backgrounding-occluded-windows",
     "--disable-client-side-phishing-detection",
     "--disable-component-extensions-with-background-pages",
-    "--disable-default-apps",
     "--disable-domain-reliability",
     "--disable-features=TranslateUI",
     "--disable-ipc-flooding-protection",
-    "--disable-renderer-backgrounding",
     "--disable-background-networking",
     "--disable-breakpad",
-    "--disable-component-update",
-    "--disable-domain-reliability"
+    "--disable-component-update"
 ]
 
-for option in stealth_options:
+for option in residential_options:
     options.add_argument(option)
 
-# Randomize user agent from a pool of realistic ones
-user_agents = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-]
-selected_ua = random.choice(user_agents)
-options.add_argument(f"--user-agent={selected_ua}")
+# Use EXACTLY the same user agent as your local Chrome
+# You can get this by visiting whatismybrowser.com locally
+local_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+options.add_argument(f"--user-agent={local_user_agent}")
 
-# Randomize viewport
-viewports = ["1366,768", "1920,1080", "1440,900", "1536,864", "1280,720"]
-options.add_argument(f"--window-size={random.choice(viewports)}")
+# Match your local screen resolution exactly
+options.add_argument("--window-size=1366,768")
 
-# Enhanced experimental options
+# Advanced stealth options
 options.add_experimental_option("excludeSwitches", [
     "enable-automation", 
     "enable-logging",
@@ -95,13 +85,12 @@ options.add_experimental_option("excludeSwitches", [
 ])
 options.add_experimental_option('useAutomationExtension', False)
 
-# Disable images and CSS to load faster and appear more like a bot checker evasion
+# Disable automation indicators
 prefs = {
-    "profile.managed_default_content_settings.images": 2,
-    "profile.default_content_setting_values": {
-        "notifications": 2,
-        "geolocation": 2,
-    }
+    "profile.default_content_setting_values.notifications": 2,
+    "profile.default_content_settings.popups": 0,
+    "profile.managed_default_content_settings.images": 1,
+    "profile.default_content_setting_values.geolocation": 2,
 }
 options.add_experimental_option("prefs", prefs)
 
@@ -113,245 +102,206 @@ else:
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
 
-# Execute multiple stealth scripts
+# Execute comprehensive stealth scripts
 stealth_scripts = [
     "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})",
     "Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]})",
     "Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']})",
+    "Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8})",
+    "Object.defineProperty(navigator, 'deviceMemory', {get: () => 8})",
+    "Object.defineProperty(navigator, 'platform', {get: () => 'Win32'})",
+    "Object.defineProperty(navigator, 'vendor', {get: () => 'Google Inc.'})",
+    "Object.defineProperty(navigator, 'connection', {get: () => ({effectiveType: '4g', downlink: 10})})",
     "window.chrome = { runtime: {} }",
-    "Object.defineProperty(navigator, 'permissions', {get: () => ({query: () => Promise.resolve({state: 'granted'})})})"
+    "Object.defineProperty(navigator, 'permissions', {get: () => ({query: () => Promise.resolve({state: 'granted'})})})",
+    # Spoof timezone to match your local timezone (change to yours)
+    "Object.defineProperty(Intl.DateTimeFormat.prototype, 'resolvedOptions', {get: () => () => ({timeZone: 'Asia/Kolkata'})})"
 ]
 
 for script in stealth_scripts:
     try:
         driver.execute_script(script)
+    except Exception as e:
+        logger.debug(f"Script execution failed: {e}")
+
+# Add realistic browsing behavior
+def simulate_human_browsing():
+    """Simulate realistic human browsing patterns"""
+    logger.info("🤖 Simulating human browsing behavior...")
+    
+    # Visit Google first (like a real user might)
+    driver.get("https://www.google.com")
+    random_delay(2, 4)
+    
+    # Simulate search behavior
+    try:
+        search_box = driver.find_element(By.NAME, "q")
+        search_box.send_keys("jobs in india")
+        search_box.submit()
+        random_delay(3, 5)
+        
+        # Visit a job site (not Naukri) first
+        try:
+            driver.get("https://www.linkedin.com/jobs")
+            random_delay(3, 6)
+        except:
+            pass
+            
     except:
         pass
 
 wait = WebDriverWait(driver, 30)
 
 try:
-    # Multiple bypass strategies
-    logger.info("🌐 Strategy 1: Direct approach with delays...")
-    random_delay(2, 5)
+    # Only simulate browsing in GitHub Actions to establish "human" pattern
+    if os.environ.get('GITHUB_ACTIONS'):
+        simulate_human_browsing()
     
-    # Try different entry points
-    entry_urls = [
-        "https://www.naukri.com",
-        "https://www.naukri.com/nlogin/login",
-        "https://www.naukri.com/?src=gnbjobs_homepage_srch"
-    ]
+    logger.info("🌐 Navigating to Naukri...")
+    driver.get("https://www.naukri.com")
+    random_delay(3, 6)
     
-    success = False
+    # Scroll and interact like a human
+    driver.execute_script("window.scrollTo(0, 300);")
+    random_delay(1, 2)
+    driver.execute_script("window.scrollTo(0, 0);")
+    random_delay(1, 2)
     
-    for i, url in enumerate(entry_urls):
-        logger.info(f"🔄 Trying entry point {i+1}: {url}")
+    # Find and click login link naturally
+    try:
+        login_selectors = [
+            "//a[contains(text(),'Login')]",
+            "//a[@href*='login']",
+            ".login-link"
+        ]
         
-        try:
-            driver.get(url)
-            random_delay(3, 6)
-            
-            # Check if we got through
-            if "Access Denied" not in driver.title and "access denied" not in driver.page_source.lower():
-                logger.info(f"✅ Successfully accessed via: {url}")
-                success = True
-                break
-            else:
-                logger.warning(f"❌ Blocked at: {url}")
-                
-        except Exception as e:
-            logger.warning(f"⚠️ Error with {url}: {e}")
-            continue
-    
-    if not success:
-        logger.info("🔄 Strategy 2: Trying with Google referrer...")
-        
-        # Strategy 2: Come from Google search
-        try:
-            driver.get("https://www.google.com/search?q=naukri.com+login")
-            random_delay(2, 4)
-            
-            # Find and click Naukri link from Google results
+        for selector in login_selectors:
             try:
-                naukri_link = wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "naukri.com")))
-                naukri_link.click()
-                random_delay(3, 5)
+                if selector.startswith('//'):
+                    login_link = wait.until(EC.element_to_be_clickable((By.XPATH, selector)))
+                else:
+                    login_link = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
                 
-                if "Access Denied" not in driver.title:
-                    logger.info("✅ Successfully accessed via Google referrer")
-                    success = True
+                # Move mouse to element and click (more human-like)
+                ActionChains(driver).move_to_element(login_link).pause(random.uniform(0.5, 1.5)).click().perform()
+                logger.info("✅ Clicked login link")
+                break
             except:
-                logger.warning("❌ Could not find Naukri link in Google results")
+                continue
                 
-        except Exception as e:
-            logger.warning(f"⚠️ Google referrer strategy failed: {e}")
-    
-    if not success:
-        logger.info("🔄 Strategy 3: Trying mobile user agent...")
-        
-        # Strategy 3: Try mobile user agent
-        mobile_ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
-        driver.execute_cdp_cmd('Network.setUserAgentOverride', {
-            "userAgent": mobile_ua,
-            "acceptLanguage": "en-US,en;q=0.9",
-            "platform": "iPhone"
-        })
-        
-        try:
-            driver.get("https://www.naukri.com/nlogin/login")
-            random_delay(3, 5)
-            
-            if "Access Denied" not in driver.title:
-                logger.info("✅ Successfully accessed with mobile user agent")
-                success = True
-        except Exception as e:
-            logger.warning(f"⚠️ Mobile user agent strategy failed: {e}")
-    
-    if not success:
-        logger.error("❌ All bypass strategies failed. Naukri is blocking GitHub Actions IPs.")
-        logger.info("💡 Possible solutions:")
-        logger.info("   1. Use a different cloud provider (Railway, Render, Heroku)")
-        logger.info("   2. Use a VPS with residential IP")
-        logger.info("   3. Use a proxy service")
-        logger.info("   4. Run from your local machine with task scheduler")
-        
-        driver.save_screenshot("all_strategies_failed.png")
-        exit(1)
-    
-    # If we get here, we successfully bypassed the block
-    logger.info("🎉 Successfully bypassed access restrictions!")
-    
-    # Navigate to login page if we're not already there
-    current_url = driver.current_url
-    if "nlogin/login" not in current_url:
-        logger.info("🔄 Navigating to login page...")
-        driver.get("https://www.naukri.com/nlogin/login")
         random_delay(2, 4)
+    except:
+        # Fallback to direct navigation
+        driver.get("https://www.naukri.com/nlogin/login")
+        random_delay(3, 5)
     
     logger.info(f"📄 Page title: {driver.title}")
     logger.info(f"🔗 Current URL: {driver.current_url}")
     
-    # Rest of your login logic...
-    email_selectors = ["usernameField", "emailid", "#usernameField", "input[type='email']"]
+    # Check if we got through
+    if "Access Denied" in driver.title:
+        logger.error("❌ Still getting access denied with advanced stealth")
+        driver.save_screenshot("stealth_failed.png")
+        exit(1)
     
-    email_element = None
-    for selector in email_selectors:
+    # Find email field with more human-like interaction
+    email_element = wait.until(EC.presence_of_element_located((By.ID, "usernameField")))
+    logger.info("✅ Found email field")
+    
+    # Click and focus on email field
+    ActionChains(driver).move_to_element(email_element).click().perform()
+    random_delay(0.5, 1)
+    
+    # Type email very slowly (like a human)
+    logger.info("📝 Entering email...")
+    human_typing(email_element, EMAIL)
+    random_delay(2, 3)
+    
+    # Find password field
+    password_element = driver.find_element(By.ID, "passwordField")
+    logger.info("✅ Found password field")
+    
+    # Click and focus on password field
+    ActionChains(driver).move_to_element(password_element).click().perform()
+    random_delay(0.5, 1)
+    
+    # Type password slowly
+    logger.info("📝 Entering password...")
+    human_typing(password_element, PASSWORD)
+    random_delay(3, 5)  # Longer pause like a human thinking
+    
+    # Find login button (avoid OTP button)
+    login_button = driver.find_element(By.XPATH, "//button[contains(text(),'Login') and not(contains(text(),'OTP'))]")
+    logger.info("✅ Found login button")
+    
+    # Move mouse to button and pause before clicking
+    logger.info("🔐 Clicking login with human-like behavior...")
+    ActionChains(driver).move_to_element(login_button).pause(random.uniform(1, 2)).click().perform()
+    
+    # Wait longer and monitor
+    logger.info("⏳ Waiting for login response...")
+    time.sleep(15)  # Longer wait
+    
+    current_url = driver.current_url
+    page_source = driver.page_source.lower()
+    
+    logger.info(f"🔗 Current URL: {current_url}")
+    
+    # Check if we bypassed OTP
+    if "nlogin" not in current_url:
+        logger.info("🎉 SUCCESS! Bypassed OTP requirement!")
+    elif "otp" in page_source or "verification" in page_source:
+        logger.warning("🔢 OTP still required despite stealth measures")
+        
+        # Last resort: Try clicking "Skip" or "Later" if available
         try:
-            if selector.startswith('#'):
-                email_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-            else:
-                email_element = wait.until(EC.presence_of_element_located((By.ID, selector)))
-            logger.info(f"✅ Found email field: {selector}")
-            break
+            skip_selectors = [
+                "//button[contains(text(),'Skip')]",
+                "//a[contains(text(),'Skip')]",
+                "//button[contains(text(),'Later')]",
+                "//a[contains(text(),'Later')]"
+            ]
+            
+            for selector in skip_selectors:
+                try:
+                    skip_btn = driver.find_element(By.XPATH, selector)
+                    skip_btn.click()
+                    logger.info("✅ Found and clicked skip option")
+                    time.sleep(3)
+                    break
+                except:
+                    continue
         except:
-            continue
-    
-    if not email_element:
-        logger.error("❌ Could not find email field")
-        driver.save_screenshot("no_email_field.png")
+            pass
+        
+        # Final check
+        if "nlogin" in driver.current_url:
+            logger.error("❌ Could not bypass OTP requirement")
+            logger.error("💡 Possible solutions:")
+            logger.error("   1. Try running at different times of day")
+            logger.error("   2. Use a VPS with residential IP")
+            logger.error("   3. Use a different automation platform (Railway, Render)")
+            exit(1)
+    else:
+        logger.error("❌ Login failed for unknown reason")
+        driver.save_screenshot("login_failed_unknown.png")
         exit(1)
     
-    password_selectors = ["passwordField", "pwd1", "#passwordField", "input[type='password']"]
-    
-    password_element = None
-    for selector in password_selectors:
-        try:
-            if selector.startswith('#'):
-                password_element = driver.find_element(By.CSS_SELECTOR, selector)
-            else:
-                password_element = driver.find_element(By.ID, selector)
-            logger.info(f"✅ Found password field: {selector}")
-            break
-        except:
-            continue
-    
-    if not password_element:
-        logger.error("❌ Could not find password field")
-        exit(1)
-    
-    # Fill credentials with human-like typing
-    logger.info("📝 Entering credentials...")
-    email_element.clear()
-    for char in EMAIL:
-        email_element.send_keys(char)
-        time.sleep(random.uniform(0.05, 0.15))
-    
-    random_delay(1, 2)
-    
-    password_element.clear()
-    for char in PASSWORD:
-        password_element.send_keys(char)
-        time.sleep(random.uniform(0.05, 0.15))
-    
-    random_delay(1, 2)
-    
-    # Find and click login button (avoiding OTP button)
-    login_selectors = [
-        "//button[contains(text(),'Login') and not(contains(text(),'OTP'))]",
-        "//button[text()='Login']",
-        "button[type='submit']"
-    ]
-    
-    login_element = None
-    for selector in login_selectors:
-        try:
-            if selector.startswith('//'):
-                login_element = driver.find_element(By.XPATH, selector)
-            else:
-                login_element = driver.find_element(By.CSS_SELECTOR, selector)
-            logger.info(f"✅ Found login button: {selector}")
-            break
-        except:
-            continue
-    
-    if not login_element:
-        logger.error("❌ Could not find login button")
-        driver.save_screenshot("no_login_button.png")
-        exit(1)
-    
-    logger.info("🔐 Clicking login...")
-    login_element.click()
-    
-    # Wait for login
-    random_delay(8, 12)
-    
-    # Check login success
-    if "nlogin" in driver.current_url:
-        logger.error("❌ Login failed")
-        driver.save_screenshot("login_failed.png")
-        exit(1)
-    
-    logger.info("✅ Login successful!")
-    
-    # Continue with resume upload...
-    logger.info("🏠 Navigating to profile...")
+    # Continue with resume upload
+    logger.info("🏠 Navigating to profile page...")
     driver.get("https://www.naukri.com/mnjuser/profile")
     random_delay(5, 8)
     
-    # Find upload element
-    upload_selectors = ["attachCV", "#attachCV", "input[type='file']"]
+    logger.info(f"📄 Profile page: {driver.title}")
     
-    upload_element = None
-    for selector in upload_selectors:
-        try:
-            if selector.startswith('#'):
-                upload_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-            else:
-                upload_element = wait.until(EC.presence_of_element_located((By.ID, selector)))
-            logger.info(f"✅ Found upload element: {selector}")
-            break
-        except:
-            continue
-    
-    if not upload_element:
-        logger.error("❌ Could not find upload element")
-        driver.save_screenshot("no_upload_element.png")
-        exit(1)
+    # Upload resume
+    upload_element = wait.until(EC.presence_of_element_located((By.ID, "attachCV")))
+    logger.info("✅ Found upload element")
     
     logger.info("📄 Uploading resume...")
     upload_element.send_keys(os.path.abspath(RESUME_PATH))
     
-    random_delay(3, 5)
+    random_delay(5, 8)
     logger.info("✅ Resume uploaded successfully!")
     
     driver.save_screenshot("success.png")
@@ -363,5 +313,7 @@ except Exception as e:
 
 finally:
     if 'driver' in locals():
+        if not os.environ.get('GITHUB_ACTIONS'):
+            time.sleep(3)
         driver.quit()
     logger.info("🏁 Script finished")
