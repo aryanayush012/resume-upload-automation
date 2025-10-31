@@ -1,10 +1,9 @@
-name: Daily Resume Upload to Naukri
+name: Daily Resume Upload (Alternative)
 
 on:
   schedule:
-    # Runs daily at 11:55 PM IST (18:25 UTC)
     - cron: '25 18 * * *'
-  workflow_dispatch:  # Allows manual trigger for testing
+  workflow_dispatch:
 
 jobs:
   upload-resume:
@@ -19,40 +18,46 @@ jobs:
       with:
         python-version: '3.11'
         
-    - name: Setup Chrome and ChromeDriver
-      uses: browser-actions/setup-chrome@v1
-      with:
-        chrome-version: stable
-        
-    - name: Install Python dependencies
+    # Try using a different browser setup
+    - name: Setup Firefox instead of Chrome
+      uses: browser-actions/setup-firefox@v1
+      
+    - name: Install dependencies
       run: |
         pip install --upgrade pip
-        pip install selenium==4.15.2 webdriver-manager==4.0.1
+        pip install selenium==4.15.2 requests beautifulsoup4
         
-    - name: Verify resume file exists
-      run: |
-        ls -la
-        if [ ! -f "Ayush Aryan.pdf" ]; then
-          echo "❌ Resume file not found!"
-          exit 1
-        fi
-        echo "✅ Resume file found: $(ls -lh 'Ayush Aryan.pdf')"
-        
-    - name: Run resume upload script
+    - name: Try with Firefox (alternative)
       env:
         NAUKRI_EMAIL: ${{ secrets.NAUKRI_EMAIL }}
         NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
         GITHUB_ACTIONS: true
       run: |
-        echo "🚀 Starting resume upload automation..."
-        python resume_upload.py
+        python -c "
+        from selenium import webdriver
+        from selenium.webdriver.firefox.options import Options
+        import time
         
-    - name: Upload debug files on failure
-      if: failure()
+        options = Options()
+        options.add_argument('--headless')
+        
+        driver = webdriver.Firefox(options=options)
+        driver.get('https://www.naukri.com/nlogin/login')
+        print('Firefox Page Title:', driver.title)
+        driver.quit()
+        "
+        
+    - name: Run main script with enhanced bypass
+      env:
+        NAUKRI_EMAIL: ${{ secrets.NAUKRI_EMAIL }}
+        NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
+        GITHUB_ACTIONS: true
+      run: python resume_upload.py
+      
+    - name: Upload debug files
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: debug-files-${{ github.run_number }}
-        path: |
-          *.png
-          *.html
+        path: "*.png"
         retention-days: 5
